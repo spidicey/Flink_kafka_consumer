@@ -76,16 +76,30 @@ sourceSets {
 }
 run.classpath = sourceSets.main.runtimeClasspath
 
+//jar {
+//    manifest {
+//        attributes 'Built-By': System.getProperty('user.name'),
+//                'Build-Jdk': System.getProperty('java.version'),
+//                'Main-Class': 'org.testflink.Main'
+//    }
+//}
+
 jar {
     manifest {
         attributes 'Built-By': System.getProperty('user.name'),
                 'Build-Jdk': System.getProperty('java.version'),
-                'Main-Class': 'org.testflink.Main'
+                'Main-Class': 'org.testflink.flinkkafkaConsumer.KafkaConsumer'
     }
 }
 
+
 shadowJar {
-    configurations = [project.configurations.flinkShadowJar]
+//    configurations = [project.configurations.flinkShadowJar]
+    manifest {
+        attributes 'Built-By': System.getProperty('user.name'),
+                'Build-Jdk': System.getProperty('java.version'),
+                'Main-Class': 'org.testflink.flinkkafkaConsumer.KafkaConsumer'
+    }
 }
 
 tasks.test {

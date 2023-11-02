@@ -1,16 +1,19 @@
 package org.testflink.flinkkafkaConsumer;
 
+import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.java.utils.ParameterTool;
+import org.apache.flink.connector.kafka.source.KafkaSource;
+import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
+import org.apache.flink.connector.kafka.source.reader.deserializer.KafkaRecordDeserializationSchema;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
 import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
-import org.apache.flink.streaming.util.serialization.JSONKeyValueDeserializationSchema;
-import org.json.JSONArray;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.json.JSONObject;
 
 import java.util.Objects;
@@ -18,7 +21,7 @@ import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 
-public class KafkaConsumer {
+public class KafkaConsumerStream {
 
     private static final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
     private static final String kafkaSever = "10.1.9.77:19092";
@@ -30,44 +33,33 @@ public class KafkaConsumer {
                 3, // number of restart attempts
                 Time.of(10, TimeUnit.SECONDS) // delay
         ));
-        Properties properties = new Properties();
-        properties.setProperty("bootstrap.servers", kafkaSever); // set Kafka server
-        properties.setProperty("auto.offset.reset", "earliest");
 
-//        JSONDeserializationSchema jsonDeserializationSchema = JSONDeserializationSchema.builder()
-//                .failOnMissingField(true)
-//                .ignoreParseErrors()
-//                .build();
-        FlinkKafkaConsumer<String> kafkaConsumer = new FlinkKafkaConsumer<>(
-                kafkaTopic,
-                new SimpleStringSchema(),
-                properties
-        );
-        DataStream<String> stream = env.addSource(kafkaConsumer);
+        KafkaSource<String> source = KafkaSource.<String>builder()
+                .setBootstrapServers(kafkaSever)
+                .setTopics(kafkaTopic)
+                .setStartingOffsets(OffsetsInitializer.earliest())
+                .setValueOnlyDeserializer(new org.apache.flink.api.common.serialization.SimpleStringSchema())
+                .setDeserializer(KafkaRecordDeserializationSchema.valueOnly(StringDeserializer.class))
+                .build();
 
-//        stream.filter(Objects::nonNull).map(new MapFunction<String, String>() {
-//            @Override
-//            public String map(String value) throws Exception {
-//                System.out.println(value);
-//                return value;
-//            }
-//        });
-        DataStream<String> filteredOrders = stream.map(element -> {
-            JSONObject json = new JSONObject(element);
-            if (!json.isNull("after")){
-                System.out.println(element);
-                JSONObject technology = json.getJSONObject("after");
-                System.out.println(technology);
+        DataStream<String> stream = env.fromSource(source, WatermarkStrategy.noWatermarks(), "Kafka Source");
+        stream.filter(Objects::nonNull).map(new MapFunction<String, String>() {
+            @Override
+            public String map(String value) throws Exception {
+
+                JSONObject json = new JSONObject(value);
+                if (!json.isNull("after")) {
+                    System.out.println(value);
+                    JSONObject technology = json.getJSONObject("after");
+                    System.out.println(technology);
+                } else {
+                    System.out.println(value);
+                    System.out.println("NULLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL");
+                }
+                return value;
             }
-            else {
-                System.out.println(element);
-                System.out.println("NULLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL");
-            }
-            return element;
         });
-//        stream.print();
-//        filteredOrders.print();
-        env.execute("ádfc");
+        env.execute("kafka consumer message unbounded Stream");
     }
 
 
