@@ -17,6 +17,18 @@ public class DebeziumSchema implements Serializable {
     @JsonProperty("after")
     private HashMap<String,Object> after;
 
+    @Override
+    public String toString() {
+        return "DebeziumSchema{" +
+                "before=" + before +
+                ", after=" + after +
+                ", ts_ms='" + ts_ms + '\'' +
+                ", transaction='" + transaction + '\'' +
+                ", source=" + source +
+                ", op='" + op + '\'' +
+                '}';
+    }
+
     @JsonProperty("ts_ms")
     private String ts_ms;
 

@@ -16,6 +16,12 @@ public class CustomDeserializationSchema implements KafkaDeserializationSchema<O
     private ObjectMapper mapper;
 
 
+
+//    @Override
+//    public boolean isEndOfStream(DebeziumSchema nextElement) {
+//        return false;
+//    }
+
     @Override
     public boolean isEndOfStream(Object nextElement) {
         return false;
