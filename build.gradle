@@ -95,11 +95,6 @@ jar {
 
 shadowJar {
 //    configurations = [project.configurations.flinkShadowJar]
-    manifest {
-        attributes 'Built-By': System.getProperty('user.name'),
-                'Build-Jdk': System.getProperty('java.version'),
-                'Main-Class': 'org.testflink.flinkkafkaConsumer.KafkaConsumer'
-    }
 }
 
 tasks.test {

@@ -1,18 +1,13 @@
 package org.testflink.flinkkafkaConsumer;
 
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
-import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
-import org.apache.flink.api.common.time.Time;
-import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
 import org.apache.flink.connector.kafka.source.reader.deserializer.KafkaRecordDeserializationSchema;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
-import org.apache.flink.streaming.util.serialization.SimpleStringSchema;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.json.JSONObject;
 
@@ -29,72 +24,88 @@ public class KafkaConsumerStream {
     //private static JSONDeserialiser jsonMapper = new JSONDeserialiser();
 
     public static void main(String[] args) throws Exception {
+        Properties properties = new Properties();
+        properties.setProperty("bootstrap.servers", kafkaSever);
+
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(
                 3, // number of restart attempts
-                Time.of(10, TimeUnit.SECONDS) // delay
+                org.apache.flink.api.common.time.Time.of(10, TimeUnit.SECONDS) // delay
         ));
-
+//        env.setRuntimeMode(RuntimeExecutionMode.BATCH);
         KafkaSource<String> source = KafkaSource.<String>builder()
                 .setBootstrapServers(kafkaSever)
                 .setTopics(kafkaTopic)
                 .setStartingOffsets(OffsetsInitializer.earliest())
+                .setBounded(OffsetsInitializer.latest())
                 .setValueOnlyDeserializer(new org.apache.flink.api.common.serialization.SimpleStringSchema())
                 .setDeserializer(KafkaRecordDeserializationSchema.valueOnly(StringDeserializer.class))
                 .build();
 
         DataStream<String> stream = env.fromSource(source, WatermarkStrategy.noWatermarks(), "Kafka Source");
+
+//        stream.windowAll(TumblingEventTimeWindows.of(Time.seconds(100))).process();
+//        DataStream<Tuple2<String, String>> tupleStream = stream.map(new JsonToTupleMapper());
+//        tupleStream.print();
         stream.filter(Objects::nonNull).map(new MapFunction<String, String>() {
             @Override
             public String map(String value) throws Exception {
-
                 JSONObject json = new JSONObject(value);
+                Result result = null;
                 if (!json.isNull("after")) {
-                    System.out.println(value);
-                    JSONObject technology = json.getJSONObject("after");
-                    System.out.println(technology);
+//                System.out.println(element);
+                    JSONObject after = json.getJSONObject("after");
+                    result = new Result();
+                    result.product_code = after.getString("product_code");
+                    result.product_name = after.getString("product_name");
+                    result.category_id = after.getInt("category_id");
+                    result.original_price = after.getDouble("original_price");
+                    if (!after.isNull("unit")) {
+//                        System.out.print(after.getString("unit"));
+                        result.unit = after.getString("unit");
+                    }
+                    System.out.println(result);
+//                System.out.println(after);
                 } else {
                     System.out.println(value);
-                    System.out.println("NULLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL");
+                    System.out.println("NULL");
                 }
                 return value;
             }
         });
         env.execute("kafka consumer message unbounded Stream");
     }
+//    public static class JSONParser implements MapFunction<Tuple5<String, String, Double, Integer, String>, Result> {
+//        @Override
+//        public Result map(Tuple5<String, String, Double, Integer, String> value) throws Exception {
+//            Result result = new Result();
+//            result.product_code = value.f0;
+//            result.product_name = value.f1;
+//            result.category_id = value.f2;
+//            result.quantity_output = value.f3;
+//            result.sale_time = value.f4;
+//            // You can further process the parsed data or perform any necessary calculations here
+//            return result;
+//        }
+//    }
 
+    // Define a class to hold the parsed data
+    public static class Result {
+        public String product_code;
 
-    private static FlinkKafkaConsumer<String> getDataSource(String topicName, final Properties properties) {
-        return new FlinkKafkaConsumer<>(topicName, getKafkaMessageDeserialiser(),
-                properties);
-    }
-
-    private static Properties getKafkaConsumerProperties(final ParameterTool parameterTool) {
-        return parameterTool.getProperties();
-    }
-
-    /**
-     * Gets deserialiser that's used to convert between Kafka's byte messages and Flink's objects
-     *
-     * @return
-     */
-    private static SimpleStringSchema getKafkaMessageDeserialiser() {
-        return new SimpleStringSchema();
-    }
-
-    /**
-     * Returns the name of a topic from which the subscriber should consume messages
-     *
-     * @param parameterTool
-     * @return
-     */
-    private static String getTopicName(final ParameterTool parameterTool) {
-        return parameterTool.getRequired("topic");
-    }
-
-    public static class FilterNull implements FilterFunction<String> {
         @Override
-        public boolean filter(String value) {
-            return value != null;
+        public String toString() {
+            return "Result{" +
+                    "product_code='" + product_code + '\'' +
+                    ", product_name='" + product_name + '\'' +
+                    ", category_id=" + category_id +
+                    ", original_price=" + original_price +
+                    ", unit='" + unit + '\'' +
+                    '}';
         }
+
+        public String product_name;
+        public Integer category_id;
+        public Double original_price;
+        public String unit;
     }
 }

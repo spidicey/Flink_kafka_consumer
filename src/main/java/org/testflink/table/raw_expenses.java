@@ -37,6 +37,17 @@ public class raw_expenses {
         return total_amount;
     }
 
+    @Override
+    public String toString() {
+        return "raw_expenses{" +
+                "expense_id=" + expense_id +
+                ", raw_store_code='" + raw_store_code + '\'' +
+                ", expense_type='" + expense_type + '\'' +
+                ", total_amount=" + total_amount +
+                ", payment_time=" + payment_time +
+                '}';
+    }
+
     public void setTotal_amount(Double total_amount) {
         this.total_amount = total_amount;
     }
